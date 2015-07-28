@@ -1,0 +1,100 @@
+package cache
+
+import (
+	"runtime"
+	"sync"
+	"time"
+)
+
+type ReplaceKey string
+type ReplaceValue string
+
+type aWrapper struct {
+	v         ReplaceValue
+	expiredAt time.Time
+}
+
+func (w aWrapper) isExpired() bool {
+	return time.Now().After(w.expiredAt)
+}
+
+type ACache struct {
+	mtx sync.RWMutex
+	m   map[ReplaceKey]*aWrapper
+
+	ttl         time.Duration
+	cleanupTime time.Duration
+	stop        chan struct{}
+}
+
+func NewACache(ttl, cleanupTime time.Duration) *ACache {
+	if cleanupTime == 0 {
+		cleanupTime = 5 * time.Second
+	}
+
+	c := &ACache{
+		m:           map[ReplaceKey]*aWrapper{},
+		ttl:         ttl,
+		cleanupTime: cleanupTime,
+		stop:        make(chan struct{}),
+	}
+
+	go c.cleanup()
+	runtime.SetFinalizer(c, stopCleanup)
+
+	return c
+}
+
+func (c *ACache) cleanup() {
+	for {
+		select {
+		case <-time.After(c.cleanupTime):
+			c.deleteExpired()
+		case <-c.stop:
+			return
+		}
+	}
+}
+
+func (c *ACache) Add(k ReplaceKey, v ReplaceValue) {
+	c.mtx.Lock()
+	c.m[k] = &aWrapper{
+		v:         v,
+		expiredAt: time.Now().Add(c.ttl),
+	}
+	c.mtx.Unlock()
+}
+
+func (c *ACache) deleteExpired() {
+	c.mtx.Lock()
+	for k, v := range c.m {
+		if v.isExpired() {
+			delete(c.m, k)
+		}
+	}
+	c.mtx.Unlock()
+}
+
+func (c *ACache) Get(k ReplaceKey) (v ReplaceValue, ok bool) {
+	c.mtx.RLock()
+	wrapper, ok := c.m[k]
+	c.mtx.RUnlock()
+	if !ok || wrapper.isExpired() {
+		return v, false
+	}
+
+	return wrapper.v, true
+}
+
+func (c *ACache) Expire(k ReplaceKey) {
+	c.mtx.RLock()
+	wrapper, ok := c.m[k]
+	c.mtx.RUnlock()
+	if ok {
+		wrapper.expiredAt = time.Now()
+	}
+}
+
+func stopCleanup(c *ACache) {
+	close(c.stop)
+}
