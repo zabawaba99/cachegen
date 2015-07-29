@@ -78,7 +78,10 @@ func TestCleanup(t *testing.T) {
 		c.Add(ReplaceKey(fmt.Sprint(i)), ReplaceValue("foo"))
 	}
 
+	c.mtx.RLock()
 	assert.Len(t, c.m, count)
+	c.mtx.RUnlock()
+
 	time.Sleep(cleanupTime)
 
 	for i := 0; i < count; i++ {
