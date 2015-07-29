@@ -1,3 +1,6 @@
+// Do not modify this file.
+// This file was automatically generate using github.com/zabawaba99/cachegen.
+
 package cache
 
 import (
