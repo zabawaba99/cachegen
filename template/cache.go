@@ -77,8 +77,9 @@ func (c *ACache) deleteExpired() {
 
 func (c *ACache) Get(k ReplaceKey) (v ReplaceValue, ok bool) {
 	c.mtx.RLock()
+	defer c.mtx.RUnlock()
+
 	wrapper, ok := c.m[k]
-	c.mtx.RUnlock()
 	if !ok || wrapper.isExpired() {
 		return v, false
 	}
@@ -89,10 +90,10 @@ func (c *ACache) Get(k ReplaceKey) (v ReplaceValue, ok bool) {
 func (c *ACache) Expire(k ReplaceKey) {
 	c.mtx.RLock()
 	wrapper, ok := c.m[k]
-	c.mtx.RUnlock()
 	if ok {
 		wrapper.expiredAt = time.Now()
 	}
+	c.mtx.RUnlock()
 }
 
 func stopACacheCleanup(c *ACache) {
