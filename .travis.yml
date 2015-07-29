@@ -1,0 +1,35 @@
+language: go
+
+go:
+  - 1.4
+  - tip
+
+before_install:
+  # linting tools
+  - go get github.com/golang/lint/golint
+  - go get golang.org/x/tools/cmd/vet
+  - go get github.com/fzipp/gocyclo
+
+install:
+  # make sure stuff actually builds
+  - go build
+
+script:
+  # ensure everything is formatted all pretty like
+  - gofmt -l -s .
+  # vet out possible issues
+  - go vet . ./template
+  # run tests
+  - go get -t . ./template
+  - go test  -v -race . ./template
+
+after_script:
+  # check possible styling errors
+  - golint ./...
+  # check for potentially complex functions but don't false build
+  - gocyclo -over 15 . || true
+  # refresh godocs in case there were api changes
+  - |
+    if [[ "$TRAVIS_PULL_REQUEST" == "false" ]] && [[ "$TRAVIS_BRANCH" == "master" ]]; then
+      go list ./... | xargs -n 1 -I{} curl http://godoc.org/-/refresh -d path={}
+    fi

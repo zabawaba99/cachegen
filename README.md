@@ -1,4 +1,4 @@
-# cachegen
+# cachegen [![Build Status](https://travis-ci.org/zabawaba99/cachegen.svg?branch=master)](https://travis-ci.org/zabawaba99/cachegen)
 
 Uses "go generate" to convert the expiration cache template to
 a cache that works for your package.
