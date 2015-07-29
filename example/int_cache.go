@@ -18,7 +18,7 @@ func (w intWrapper) isExpired() bool {
 	return time.Now().After(w.expiredAt)
 }
 
-type IntCache struct {
+type intCache struct {
 	mtx sync.RWMutex
 	m   map[string]*intWrapper
 
@@ -27,16 +27,22 @@ type IntCache struct {
 	stop        chan struct{}
 }
 
+type IntCache struct {
+	*intCache
+}
+
 func NewIntCache(ttl, cleanupTime time.Duration) *IntCache {
 	if cleanupTime == 0 {
 		cleanupTime = 5 * time.Second
 	}
 
 	c := &IntCache{
-		m:           map[string]*intWrapper{},
-		ttl:         ttl,
-		cleanupTime: cleanupTime,
-		stop:        make(chan struct{}),
+		intCache: &intCache{
+			m:           map[string]*intWrapper{},
+			ttl:         ttl,
+			cleanupTime: cleanupTime,
+			stop:        make(chan struct{}),
+		},
 	}
 
 	go c.cleanup()
@@ -45,7 +51,7 @@ func NewIntCache(ttl, cleanupTime time.Duration) *IntCache {
 	return c
 }
 
-func (c *IntCache) cleanup() {
+func (c *intCache) cleanup() {
 	for {
 		select {
 		case <-time.After(c.cleanupTime):
@@ -56,7 +62,7 @@ func (c *IntCache) cleanup() {
 	}
 }
 
-func (c *IntCache) Add(k string, v int) {
+func (c *intCache) Add(k string, v int) {
 	c.mtx.Lock()
 	c.m[k] = &intWrapper{
 		v:         v,
@@ -65,7 +71,7 @@ func (c *IntCache) Add(k string, v int) {
 	c.mtx.Unlock()
 }
 
-func (c *IntCache) deleteExpired() {
+func (c *intCache) deleteExpired() {
 	c.mtx.Lock()
 	for k, v := range c.m {
 		if v.isExpired() {
@@ -75,7 +81,7 @@ func (c *IntCache) deleteExpired() {
 	c.mtx.Unlock()
 }
 
-func (c *IntCache) Get(k string) (v int, ok bool) {
+func (c *intCache) Get(k string) (v int, ok bool) {
 	c.mtx.RLock()
 	defer c.mtx.RUnlock()
 
@@ -87,7 +93,7 @@ func (c *IntCache) Get(k string) (v int, ok bool) {
 	return wrapper.v, true
 }
 
-func (c *IntCache) Expire(k string) {
+func (c *intCache) Expire(k string) {
 	c.mtx.RLock()
 	wrapper, ok := c.m[k]
 	if ok {

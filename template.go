@@ -57,6 +57,7 @@ func generate(dir, pkg string) {
 	replaceIdentifier(f, "ACache", typeName+"Cache")
 	replaceIdentifier(f, "NewACache", "New"+typeName+"Cache")
 	wrapperName := strings.ToLower(valueType[:1]) + valueType[1:]
+	replaceIdentifier(f, "aCache", wrapperName+"Cache")
 	replaceIdentifier(f, "aWrapper", wrapperName+"Wrapper")
 	replaceIdentifier(f, "stopACacheCleanup", "stop"+typeName+"CacheCleanup")
 

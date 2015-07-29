@@ -21,7 +21,7 @@ func (w aWrapper) isExpired() bool {
 	return time.Now().After(w.expiredAt)
 }
 
-type ACache struct {
+type aCache struct {
 	mtx sync.RWMutex
 	m   map[ReplaceKey]*aWrapper
 
@@ -30,16 +30,22 @@ type ACache struct {
 	stop        chan struct{}
 }
 
+type ACache struct {
+	*aCache
+}
+
 func NewACache(ttl, cleanupTime time.Duration) *ACache {
 	if cleanupTime == 0 {
 		cleanupTime = 5 * time.Second
 	}
 
 	c := &ACache{
-		m:           map[ReplaceKey]*aWrapper{},
-		ttl:         ttl,
-		cleanupTime: cleanupTime,
-		stop:        make(chan struct{}),
+		aCache: &aCache{
+			m:           map[ReplaceKey]*aWrapper{},
+			ttl:         ttl,
+			cleanupTime: cleanupTime,
+			stop:        make(chan struct{}),
+		},
 	}
 
 	go c.cleanup()
@@ -48,7 +54,7 @@ func NewACache(ttl, cleanupTime time.Duration) *ACache {
 	return c
 }
 
-func (c *ACache) cleanup() {
+func (c *aCache) cleanup() {
 	for {
 		select {
 		case <-time.After(c.cleanupTime):
@@ -59,7 +65,7 @@ func (c *ACache) cleanup() {
 	}
 }
 
-func (c *ACache) Add(k ReplaceKey, v ReplaceValue) {
+func (c *aCache) Add(k ReplaceKey, v ReplaceValue) {
 	c.mtx.Lock()
 	c.m[k] = &aWrapper{
 		v:         v,
@@ -68,7 +74,7 @@ func (c *ACache) Add(k ReplaceKey, v ReplaceValue) {
 	c.mtx.Unlock()
 }
 
-func (c *ACache) deleteExpired() {
+func (c *aCache) deleteExpired() {
 	c.mtx.Lock()
 	for k, v := range c.m {
 		if v.isExpired() {
@@ -78,7 +84,7 @@ func (c *ACache) deleteExpired() {
 	c.mtx.Unlock()
 }
 
-func (c *ACache) Get(k ReplaceKey) (v ReplaceValue, ok bool) {
+func (c *aCache) Get(k ReplaceKey) (v ReplaceValue, ok bool) {
 	c.mtx.RLock()
 	defer c.mtx.RUnlock()
 
@@ -90,7 +96,7 @@ func (c *ACache) Get(k ReplaceKey) (v ReplaceValue, ok bool) {
 	return wrapper.v, true
 }
 
-func (c *ACache) Expire(k ReplaceKey) {
+func (c *aCache) Expire(k ReplaceKey) {
 	c.mtx.RLock()
 	wrapper, ok := c.m[k]
 	if ok {
