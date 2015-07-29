@@ -55,8 +55,10 @@ func generate(dir, pkg string) {
 	// rename ACache and aWrapper with the type specified
 	typeName := strings.ToUpper(valueType[:1]) + valueType[1:]
 	replaceIdentifier(f, "ACache", typeName+"Cache")
+	replaceIdentifier(f, "NewACache", "New"+typeName+"Cache")
 	wrapperName := strings.ToLower(valueType[:1]) + valueType[1:]
 	replaceIdentifier(f, "aWrapper", wrapperName+"Wrapper")
+	replaceIdentifier(f, "stopACacheCleanup", "stop"+typeName+"CacheCleanup")
 
 	// output the new file
 	outputFileName := strings.ToLower(valueType) + "_cache.go"

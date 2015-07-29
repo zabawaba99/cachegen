@@ -40,7 +40,7 @@ func NewACache(ttl, cleanupTime time.Duration) *ACache {
 	}
 
 	go c.cleanup()
-	runtime.SetFinalizer(c, stopCleanup)
+	runtime.SetFinalizer(c, stopACacheCleanup)
 
 	return c
 }
@@ -95,6 +95,6 @@ func (c *ACache) Expire(k ReplaceKey) {
 	}
 }
 
-func stopCleanup(c *ACache) {
+func stopACacheCleanup(c *ACache) {
 	close(c.stop)
 }
