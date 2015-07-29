@@ -24,7 +24,7 @@ type CustomerCache struct {
 	stop        chan struct{}
 }
 
-func NewACache(ttl, cleanupTime time.Duration) *CustomerCache {
+func NewCustomerCache(ttl, cleanupTime time.Duration) *CustomerCache {
 	if cleanupTime == 0 {
 		cleanupTime = 5 * time.Second
 	}
@@ -37,7 +37,7 @@ func NewACache(ttl, cleanupTime time.Duration) *CustomerCache {
 	}
 
 	go c.cleanup()
-	runtime.SetFinalizer(c, stopCleanup)
+	runtime.SetFinalizer(c, stopCustomerCacheCleanup)
 
 	return c
 }
@@ -74,8 +74,9 @@ func (c *CustomerCache) deleteExpired() {
 
 func (c *CustomerCache) Get(k int) (v Customer, ok bool) {
 	c.mtx.RLock()
+	defer c.mtx.RUnlock()
+
 	wrapper, ok := c.m[k]
-	c.mtx.RUnlock()
 	if !ok || wrapper.isExpired() {
 		return v, false
 	}
@@ -86,12 +87,12 @@ func (c *CustomerCache) Get(k int) (v Customer, ok bool) {
 func (c *CustomerCache) Expire(k int) {
 	c.mtx.RLock()
 	wrapper, ok := c.m[k]
-	c.mtx.RUnlock()
 	if ok {
 		wrapper.expiredAt = time.Now()
 	}
+	c.mtx.RUnlock()
 }
 
-func stopCleanup(c *CustomerCache) {
+func stopCustomerCacheCleanup(c *CustomerCache) {
 	close(c.stop)
 }

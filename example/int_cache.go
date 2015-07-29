@@ -24,7 +24,7 @@ type IntCache struct {
 	stop        chan struct{}
 }
 
-func NewACache(ttl, cleanupTime time.Duration) *IntCache {
+func NewIntCache(ttl, cleanupTime time.Duration) *IntCache {
 	if cleanupTime == 0 {
 		cleanupTime = 5 * time.Second
 	}
@@ -37,7 +37,7 @@ func NewACache(ttl, cleanupTime time.Duration) *IntCache {
 	}
 
 	go c.cleanup()
-	runtime.SetFinalizer(c, stopCleanup)
+	runtime.SetFinalizer(c, stopIntCacheCleanup)
 
 	return c
 }
@@ -74,8 +74,9 @@ func (c *IntCache) deleteExpired() {
 
 func (c *IntCache) Get(k string) (v int, ok bool) {
 	c.mtx.RLock()
+	defer c.mtx.RUnlock()
+
 	wrapper, ok := c.m[k]
-	c.mtx.RUnlock()
 	if !ok || wrapper.isExpired() {
 		return v, false
 	}
@@ -86,12 +87,12 @@ func (c *IntCache) Get(k string) (v int, ok bool) {
 func (c *IntCache) Expire(k string) {
 	c.mtx.RLock()
 	wrapper, ok := c.m[k]
-	c.mtx.RUnlock()
 	if ok {
 		wrapper.expiredAt = time.Now()
 	}
+	c.mtx.RUnlock()
 }
 
-func stopCleanup(c *IntCache) {
+func stopIntCacheCleanup(c *IntCache) {
 	close(c.stop)
 }
